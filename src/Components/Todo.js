@@ -67,7 +67,9 @@ class Todo extends Component {
     var finished = true;
     this.state.todo.todos.forEach(todo => {
       if (
-        todo.completedBy.findIndex(i => i.userId === this.props.user.id) === -1
+        todo.completedBy.findIndex(i => i.userId === this.props.user.id) ===
+          -1 &&
+        (todo.completedBy.length === 0 && todo.individual === 1)
       ) {
         finished = false;
       }
@@ -85,20 +87,12 @@ class Todo extends Component {
       <Box>
         {this.state.todo &&
           <View>
-            {!finished &&
-              <Icon
-                size={20}
-                style={{ marginBottom: 10 }}
-                name="alert-circle"
-                color="#212121"
-              />}
-            {finished &&
-              <Icon
-                size={20}
-                style={{ marginBottom: 10 }}
-                name="check-circle"
-                color="#212121"
-              />}
+            <Icon
+              size={20}
+              style={{ marginBottom: 10 }}
+              name="watch"
+              color="#212121"
+            />
             <Paragraph>{this.state.todo.description}</Paragraph>
             {this.state.todo.todos.map((todo, index) =>
               <TodoRow
@@ -107,10 +101,11 @@ class Todo extends Component {
                 todo={todo}
                 key={index}
                 pressed={
-                  todo.completedBy &&
-                  todo.completedBy.findIndex(
-                    i => i.userId === this.props.user.id
-                  ) !== -1
+                  todo.completedBy.length > 0 &&
+                  (todo.individual === 1 ||
+                    todo.completedBy.findIndex(
+                      i => i.userId === this.props.user.id
+                    ) !== -1)
                 }
               />
             )}

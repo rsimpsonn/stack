@@ -4,12 +4,12 @@ import {
   FETCHING_INTERESTS_SUCCESS
 } from "./constants";
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 export function fetchInterests(token) {
   return dispatch => {
     dispatch(getInterests());
-    fetch(`${ngrokRoute}/api/getinterests`, {
+    fetch(`${endpoint}/api/getinterests`, {
       headers: {
         "x-access-token": token,
         Accept: "application/json",
@@ -19,7 +19,6 @@ export function fetchInterests(token) {
       res
         .json()
         .then(data => {
-          console.log(data);
           dispatch(getInterestsSuccess(data));
         })
         .catch(err => console.log(err));
@@ -28,10 +27,9 @@ export function fetchInterests(token) {
 }
 
 export function joinInterest(token, userId, groupId) {
-  console.log("joining");
   return dispatch => {
     dispatch(joining());
-    fetch(`${ngrokRoute}/api/joininterest`, {
+    fetch(`${endpoint}/api/joininterest`, {
       method: "POST",
       headers: {
         "x-access-token": token,
@@ -50,7 +48,7 @@ export function joinInterest(token, userId, groupId) {
 
 export function joinGroup(token, userId, groupId) {
   return dispatch => {
-    fetch(`${ngrokRoute}/api/joingroup`, {
+    fetch(`${endpoint}/api/joingroup`, {
       method: "POST",
       headers: {
         "x-access-token": token,
@@ -61,14 +59,16 @@ export function joinGroup(token, userId, groupId) {
         userId,
         groupId
       })
-    }).then(() => getUserGroups(token, userId));
+    }).then(data => {
+      getUserGroups(token, userId);
+    });
   };
 }
 
 export function getUserGroups(token, userId) {
   return dispatch => {
     dispatch(getting());
-    fetch(`${ngrokRoute}/api/getusergroups?userId=${userId}`, {
+    fetch(`${endpoint}/api/getusergroups?userId=${userId}`, {
       headers: {
         "x-access-token": token
       }
@@ -76,6 +76,7 @@ export function getUserGroups(token, userId) {
       res
         .json()
         .then(data => {
+          console.log(data);
           dispatch(getGroupsSuccess(data));
         })
         .catch(err => console.log(err));
@@ -86,7 +87,7 @@ export function getUserGroups(token, userId) {
 export function joinSubInterest(token, userId, subId) {
   console.log("joining");
   return dispatch => {
-    fetch(`${ngrokRoute}/api/joinsubinterest`, {
+    fetch(`${endpoint}/api/joinsubinterest`, {
       method: "POST",
       headers: {
         "x-access-token": token,
@@ -106,7 +107,7 @@ export function joinSubInterest(token, userId, subId) {
 export function getTodo(token, todoId) {
   return dispatch => {
     dispatch(gettingTodos());
-    fetch(`${ngrokRoute}/api/todobyid?todoId=${todoId}`, {
+    fetch(`${endpoint}/api/todobyid?todoId=${todoId}`, {
       headers: {
         "x-access-token": token
       }
@@ -121,7 +122,7 @@ export function getTodo(token, todoId) {
 export function getEvent(token, eventId) {
   return dispatch => {
     dispatch(gettingEvent());
-    fetch(`${ngrokRoute}/api/eventbyid?eventId=${eventId}`, {
+    fetch(`${endpoint}/api/eventbyid?eventId=${eventId}`, {
       headers: {
         "x-access-token": token
       }
@@ -133,9 +134,24 @@ export function getEvent(token, eventId) {
   };
 }
 
+export function getVote(token, voteId) {
+  return dispatch => {
+    dispatch(gettingEvent());
+    fetch(`${endpoint}/api/votebyid?voteId=${voteId}`, {
+      headers: {
+        "x-access-token": token
+      }
+    }).then(res => {
+      res.json().then(data => {
+        dispatch(getVoteSuccess(data));
+      });
+    });
+  };
+}
+
 export function removeFromEventList(token, eventId, userId, going) {
   return dispatch => {
-    fetch(`${ngrokRoute}/api/removefromeventlist`, {
+    fetch(`${endpoint}/api/removefromeventlist`, {
       headers: {
         "x-access-token": token,
         Accept: "application/json",
@@ -155,7 +171,7 @@ export function removeFromEventList(token, eventId, userId, going) {
 
 export function addToEventList(token, eventId, userId, name, going) {
   return dispatch => {
-    fetch(`${ngrokRoute}/api/addtoeventlist`, {
+    fetch(`${endpoint}/api/addtoeventlist`, {
       headers: {
         "x-access-token": token,
         Accept: "application/json",
@@ -176,7 +192,7 @@ export function addToEventList(token, eventId, userId, name, going) {
 
 export function completeTodo(token, todoId, userId, index) {
   return dispatch => {
-    fetch(`${ngrokRoute}/api/completetodo`, {
+    fetch(`${endpoint}/api/completetodo`, {
       headers: {
         "x-access-token": token,
         Accept: "application/json",
@@ -194,10 +210,52 @@ export function completeTodo(token, todoId, userId, index) {
   };
 }
 
-export function login(email, password, callback) {
+export function pickVote(token, voteId, userId, index) {
+  return dispatch => {
+    fetch(`${endpoint}/api/pickvote`, {
+      headers: {
+        "x-access-token": token,
+        Accept: "application/json",
+        "Content-type": "application/json"
+      },
+      method: "POST",
+      body: JSON.stringify({
+        voteId,
+        userId,
+        index
+      })
+    }).then(res => {
+      dispatch(getVote(token, voteId));
+    });
+  };
+}
+
+export function getSignUp(firstName, lastName, email, password, callback) {
+  return dispatch => {
+    fetch(`${endpoint}/api/signup`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-type": "application/json"
+      },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email,
+        password
+      })
+    }).then(res => {
+      res.json().then(data => {
+        callback();
+      });
+    });
+  };
+}
+
+export function login(email, password, callback, errCallback) {
   return dispatch => {
     dispatch(getLogin());
-    fetch(`${ngrokRoute}/api/login`, {
+    fetch(`${endpoint}/api/login`, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -210,8 +268,12 @@ export function login(email, password, callback) {
     }).then(res => {
       res.json().then(data => {
         console.log(data);
-        dispatch(loginSuccess(data));
-        callback();
+        if (data.success) {
+          dispatch(loginSuccess(data));
+          callback();
+        } else {
+          errCallback();
+        }
       });
     });
   };
@@ -294,7 +356,6 @@ function getInterestsSuccess(data, id) {
       data[index].isMember === false;
     }
   });
-  console.log(data);
   return {
     type: FETCHING_INTERESTS_SUCCESS,
     data
@@ -311,6 +372,13 @@ function getTodoSuccess(data) {
 function getEventSuccess(data) {
   return {
     type: "GETTING_EVENT_SUCCESS",
+    data
+  };
+}
+
+function getVoteSuccess(data) {
+  return {
+    type: "GETTING_VOTE_SUCCESS",
     data
   };
 }

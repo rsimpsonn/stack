@@ -4,7 +4,7 @@ import styled from "styled-components/native";
 import { ImagePicker, Permissions } from "expo";
 import { connect } from "react-redux";
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 import { profilePictureAdded } from "../../actions";
 
@@ -33,32 +33,35 @@ class ProfilePicture extends Component {
       compression: 0.5,
       allowsEditing: true
     });
-    this.setState({
-      picked: true,
-      result
-    });
 
-    var data = new FormData();
-    data.append("profilePic", {
-      uri: result.uri,
-      type: "image/jpeg",
-      name: "image.jpg"
-    });
-    data.append("userId", this.props.user.id);
+    if (!result.cancelled) {
+      this.setState({
+        picked: true,
+        result
+      });
 
-    const response = await fetch(`${ngrokRoute}/api/addprofilepic`, {
-      method: "POST",
-      headers: {
-        "x-access-token": this.props.user.token,
-        "Content-type": "multipart/form-data",
-        Accept: "application/json"
-      },
-      body: data
-    });
+      var data = new FormData();
+      data.append("profilePic", {
+        uri: result.uri,
+        type: "image/jpeg",
+        name: "image.jpg"
+      });
+      data.append("userId", this.props.user.id);
 
-    const link = await response.json();
+      const response = await fetch(`${endpoint}/api/addprofilepic`, {
+        method: "POST",
+        headers: {
+          "x-access-token": this.props.user.token,
+          "Content-type": "multipart/form-data",
+          Accept: "application/json"
+        },
+        body: data
+      });
 
-    this.props.profilePictureAdded(link.link);
+      const link = await response.json();
+
+      this.props.profilePictureAdded(link.link);
+    }
   }
 
   render() {
@@ -69,9 +72,7 @@ class ProfilePicture extends Component {
           source={{
             uri: this.state.picked
               ? `data:image/gif;base64,${this.state.result.base64}`
-              : this.state.alreadyThere
-                ? this.props.user.profilePic
-                : "http://www.media3.hw-static.com/media/2017/12/wenn_owenwilson_122917-1800x1200.jpg"
+              : this.state.alreadyThere ? this.props.user.profilePic : ""
           }}
         />
       </TouchableOpacity>

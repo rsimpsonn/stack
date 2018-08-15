@@ -17,7 +17,7 @@ import {
 import EventList from "../Components/EventList";
 import Bars from "../Components/Bars";
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 class InterestPage extends Component {
   constructor(props) {
@@ -65,7 +65,7 @@ class InterestPage extends Component {
 
   async getSubInterests() {
     const response = await fetch(
-      `${ngrokRoute}/api/getsubinterests?parent=${this.props.interest
+      `${endpoint}/api/getsubinterests?parent=${this.props.interest
         .interestId}`,
       {
         headers: {
@@ -82,7 +82,7 @@ class InterestPage extends Component {
 
   async getGroups() {
     const response = await fetch(
-      `${ngrokRoute}/api/getgroups?interestId=${this.props.interest
+      `${endpoint}/api/getgroups?interestId=${this.props.interest
         .interestId}`,
       {
         headers: {
@@ -106,8 +106,18 @@ class InterestPage extends Component {
   render() {
     return (
       <Container>
-        <ScrollView contentContainerStyle={{ padding: 10 }}>
+        <ScrollView contentContainerStyle={{ paddingTop: 10 }}>
           <Row style={{ marginTop: 20 }}>
+            <TouchableOpacity
+              onPress={() => this.props.navigation.navigate("HomePage")}
+            >
+              <Icon
+                name="chevron-left"
+                size={25}
+                color="#212121"
+                style={{ marginRight: 5 }}
+              />
+            </TouchableOpacity>
             <Box style={{ marginRight: 15 }}>
               <Image
                 style={{ width: 15, height: 15 }}
@@ -161,7 +171,7 @@ class InterestPage extends Component {
                       <Picture
                         source={{
                           uri: group.cover.substring(0, 1) === "/"
-                            ? `${ngrokRoute}${group.cover}`
+                            ? `${endpoint}${group.cover}`
                             : group.cover
                         }}
                       />
@@ -238,6 +248,7 @@ const Row = styled.View`
   display: flex;
   alignItems: center;
   flexDirection: row;
+
 `;
 
 const RowView = styled.View`
@@ -284,7 +295,7 @@ const GroupArea = styled.View`
   display: flex;
   justifyContent: center;
   alignItems: center;
-  margin: 0 10px;
+  margin: 10px 10px;
 `;
 
 const Label = styled.Text`

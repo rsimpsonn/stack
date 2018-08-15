@@ -7,7 +7,7 @@ const initialState = {
   profilePic: false
 };
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 export default function userReducer(state = initialState, action) {
   switch (action.type) {
@@ -20,7 +20,7 @@ export default function userReducer(state = initialState, action) {
         id: action.data.id,
         email: action.data.email,
         profilePic: action.data.profilePic
-          ? ngrokRoute + action.data.profilePic
+          ? endpoint + action.data.profilePic
           : false
       };
     case "LOGGED_OUT":
@@ -36,7 +36,7 @@ export default function userReducer(state = initialState, action) {
     case "PROFILE_PICTURE_ADDED":
       return {
         ...state,
-        profilePic: ngrokRoute + action.link
+        profilePic: endpoint + action.link
       };
     default:
       return state;

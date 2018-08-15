@@ -13,13 +13,25 @@ export default class TodoFormatter extends Component {
       description: "",
       todos: [],
       doneBy: new Date(),
-      currentTodo: ""
+      currentTodo: "",
+      message: ""
     };
 
     this.refs = [];
 
     this.todos = this.todos.bind(this);
     this.update = this.update.bind(this);
+    this.returnTodoData = this.returnTodoData.bind(this);
+  }
+
+  returnTodoData() {
+    if (this.state.description && this.state.todos && this.state.message) {
+      return {
+        message: this.state.message,
+        description: this.state.description,
+        todos: this.state.todos
+      };
+    }
   }
 
   update(index, todo) {
@@ -28,6 +40,7 @@ export default class TodoFormatter extends Component {
     this.setState({
       todos: copy
     });
+    this.props.handleChange("todos", copy);
   }
 
   todos() {
@@ -37,15 +50,11 @@ export default class TodoFormatter extends Component {
   render() {
     console.log(this.state.todos);
     return (
-      <View>
-        <Bubble
-          onChangeText={text => this.setState({ message: text })}
-          value={this.state.message}
-          placeholder="Message"
-        />
+      <ScrollView contentContainerStyle={{ padding: 10 }}>
         <DescriptionInput
           onChangeText={description => {
             this.setState({ description });
+            this.props.handleChange("description", description);
           }}
           value={this.state.description}
           placeholder="Description"
@@ -103,7 +112,7 @@ export default class TodoFormatter extends Component {
             />
           </Row>
         </ScrollView>
-      </View>
+      </ScrollView>
     );
   }
 }
@@ -114,7 +123,8 @@ const DescriptionInput = styled.TextInput`
   borderRadius: 4px;
   padding: 10px;
   fontFamily: Avenir-Medium;
-  margin: 10px;
+  marginTop: 10px;
+  marginBottom: 10px;
 `;
 
 const Row = styled.View`
@@ -133,14 +143,14 @@ const Circle = styled.View`
 
 const TodoInput = styled.TextInput`
   marginLeft: 10px;
-  fontSize: 12px;
+  fontSize: 14px;
   color: #212121;
   fontFamily: Avenir-Heavy;
   letterSpacing: 0.5px;
 `;
 
 const TodoText = styled.Text`
-fontSize: 12px;
+fontSize: 14px;
 color: #212121;
 fontFamily: Avenir-Heavy;
 letterSpacing: 0.5px;

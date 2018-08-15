@@ -64,7 +64,7 @@ const colorChoices = [
   "#EBD4FF"
 ];
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 class MakeGroup extends Component {
   constructor(props) {
@@ -109,7 +109,7 @@ class MakeGroup extends Component {
 
     console.log(data);
 
-    fetch(`${ngrokRoute}/api/makegroup`, {
+    fetch(`${endpoint}/api/makegroup`, {
       method: "POST",
       headers: {
         "x-access-token": this.props.user.token,
@@ -132,7 +132,23 @@ class MakeGroup extends Component {
     }
     return (
       <Container>
-        <Icon name={icons[this.state.index]} color="#212121" size={30} />
+        <TouchableOpacity
+          style={{ position: "absolute", top: 30, left: 10 }}
+          onPress={() => this.props.navigation.navigate("InterestPage")}
+        >
+          <Icon
+            name="chevron-left"
+            size={25}
+            color="#212121"
+            style={{ marginRight: 5 }}
+          />
+        </TouchableOpacity>
+        <Icon
+          name={icons[this.state.index]}
+          color="#212121"
+          size={30}
+          style={{ marginTop: 20 }}
+        />
         <View style={{ marginTop: 40 }}>
           <TypeWriter
             style={{

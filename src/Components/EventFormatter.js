@@ -24,7 +24,7 @@ const dayTimes = [
   ["All Day", "Morning", "Night"]
 ];
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 const options = ["One Time", "Weekly", "Monthly"];
 
@@ -55,11 +55,20 @@ class EventFormatter extends Component {
     this.returnMessageData = this.returnMessageData.bind(this);
   }
 
+  async componentDidMount() {
+    const weekScheduleRes = await fetch(`${endpoint}/thisweek`);
+    const weekSchedule = await weekScheduleRes.json();
+
+    this.setState({
+      weekSchedule: weekSchedule
+    });
+  }
+
   async getEvents() {
     const rangeStart = moment(this.state.day).subtract(1, "days").format();
     const rangeEnd = moment(this.state.day).format();
     const response = await fetch(
-      `${ngrokRoute}/api/geteventsbydaterange?rangeStart=${rangeStart}&rangeEnd=${rangeEnd}`,
+      `${endpoint}/api/geteventsbydaterange?rangeStart=${rangeStart}&rangeEnd=${rangeEnd}`,
       {
         headers: {
           "x-access-token": this.props.user.token
@@ -92,25 +101,25 @@ class EventFormatter extends Component {
   }
 
   returnMessageData() {
-    if (
-      this.state.message &&
-      this.state.description &&
-      this.state.option &&
-      this.state.time
-    ) {
-      this.props.returnMessageData({
-        message: this.state.message,
-        description: this.state.description,
-        option: this.state.option,
-        time: this.state.time,
-        date: this.state.date,
-        type: "event"
-      });
-    }
+    console.log({
+      message: this.state.message,
+      description: this.state.description,
+      option: this.state.option,
+      time: this.state.time,
+      date: this.state.date,
+      type: "event"
+    });
+    return {
+      message: this.state.message,
+      description: this.state.description,
+      option: this.state.option,
+      time: this.state.time,
+      date: this.state.date,
+      type: "event"
+    };
   }
 
   render() {
-    console.log(this.state.date.format());
     if (this.state.loading && this.state.pickedDayEvents) {
       this.setState({
         loading: false
@@ -118,31 +127,40 @@ class EventFormatter extends Component {
     } else if (this.state.loading && !this.state.pickedDayEvents) {
       this.getEvents();
     }
-    console.log(this.state.date.day());
+
+    var times;
+
+    if (
+      this.state.weekSchedule &&
+      this.state.weekSchedule[
+        this.state.date.startOf("isoweek").month() +
+          1 +
+          "-" +
+          this.state.date.startOf("isoweek").date()
+      ]
+    ) {
+      times =
+        dayTimes[
+          this.state.weekSchedule[
+            this.state.date.startOf("isoweek").month() +
+              1 +
+              "-" +
+              this.state.date.startOf("isoweek").date()
+          ][moment(this.state.day).day() - 1]
+        ];
+    } else {
+      times = dayTimes[moment(this.state.day).day()];
+    }
+
     return (
-      <ScrollView>
-        <Bubble
-          onChangeText={text => {
-            this.setState({ message: text });
-          }}
-          value={this.state.message}
-          placeholder="Message"
-          onSubmitEditing={() => {
-            this.props.progressStarted();
-            this.returnMessageData();
-          }}
-          returnKeyType="done"
-        />
+      <ScrollView contentContainerStyle={{ padding: 10 }}>
         <DescriptionInput
           onChangeText={description => {
             this.setState({ description });
+            this.props.handleChange("description", description);
           }}
           value={this.state.description}
           placeholder="Description"
-          onSubmitEditing={() => {
-            this.props.progressStarted();
-            this.returnMessageData();
-          }}
         />
         <Calendar
           onDayPress={day => {
@@ -154,6 +172,7 @@ class EventFormatter extends Component {
               pickedDayEvents: false
             });
             this.returnMessageData();
+            this.props.handleChange("date", moment(day.dateString));
           }}
           markedDates={{
             [this.state.day]: {
@@ -177,10 +196,11 @@ class EventFormatter extends Component {
           }}
         />
         {!this.state.loading &&
+          this.state.weekSchedule &&
           <View>
             <Header>Times </Header>
             <Row>
-              {dayTimes[this.state.date.day()].map(time =>
+              {times.map(time =>
                 <Press
                   color={this.pickColor(time)}
                   data={time}
@@ -189,6 +209,7 @@ class EventFormatter extends Component {
                   returnData={() => {
                     this.setState({ time });
                     this.returnMessageData();
+                    this.props.handleChange("time", time);
                   }}
                 />
               )}
@@ -204,6 +225,7 @@ class EventFormatter extends Component {
                   returnData={() => {
                     this.setState({ option });
                     this.returnMessageData();
+                    this.props.handleChange("option", option);
                   }}
                 />
               )}
@@ -228,7 +250,8 @@ const DescriptionInput = styled.TextInput`
   borderRadius: 4px;
   padding: 10px;
   fontFamily: Avenir-Medium;
-  margin: 10px;
+  marginTop: 10px;
+  marginBottom: 10px;
 `;
 
 const Row = styled.View`

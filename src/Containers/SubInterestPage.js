@@ -5,7 +5,8 @@ import {
   ScrollView,
   Text,
   Keyboard,
-  Animated
+  Animated,
+  ActivityIndicator
 } from "react-native";
 import styled from "styled-components/native";
 import Image from "react-native-remote-svg";
@@ -14,22 +15,27 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { connect } from "react-redux";
 import openSocket from "socket.io-client";
 
+import Icon from "react-native-vector-icons/Feather";
 import Emoji from "react-native-emoji";
 
 import Messenger from "../Components/Messenger";
 import Message from "../Components/Message";
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+import InvertibleScrollView from "react-native-invertible-scroll-view";
+
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 class SubInterestPage extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      messages: []
+      messages: [],
+      dataIndex: 1,
+      noMoreMessages: false
     };
 
-    this.socket = openSocket(ngrokRoute);
+    this.socket = openSocket(endpoint);
 
     this.keyboardHeight = new Animated.Value(0);
 
@@ -51,7 +57,7 @@ class SubInterestPage extends Component {
     this.socket.on("allMessages", messages => this.setState({ messages }));
     this.socket.on("newMessage", message => {
       if (message.childId === this.props.subinterest.childId) {
-        this.setState({ messages: this.state.messages.concat(message) });
+        this.setState({ messages: [message].concat(this.state.messages) });
       }
     });
   }
@@ -71,6 +77,39 @@ class SubInterestPage extends Component {
     );
   }
 
+  isCloseToTop = ({ layoutMeasurement, contentOffset, contentSize }) => {
+    return (
+      layoutMeasurement.height + contentOffset.y >= contentSize.height - 20
+    );
+  };
+
+  async loadNextData() {
+    let results = await fetch(`${endpoint}/api/retrievemessages`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-type": "application/json",
+        "x-access-token": this.props.user.token
+      },
+      body: JSON.stringify({
+        subId: this.props.subinterest.childId,
+        dataIndex: this.state.dataIndex
+      })
+    });
+
+    let messages = await results.json();
+
+    console.log(messages);
+
+    this.setState({
+      dataIndex: this.state.dataIndex + 1,
+      messages: messages.concat(this.state.messages),
+      newMessagesLoading: false,
+      noMoreMessages: messages.length === 0,
+      loading: false
+    });
+  }
+
   componentWillUnmount() {
     this.keyboardWillShowSub.remove();
     this.keyboardWillHideSub.remove();
@@ -80,7 +119,7 @@ class SubInterestPage extends Component {
     Animated.timing(this.keyboardHeight, {
       duration: event.duration / 1.2,
       toValue: event.endCoordinates.height
-    }).start(() => this.scrollView.scrollToEnd({ animated: true }));
+    }).start();
   };
 
   keyboardWillHide = event => {
@@ -92,7 +131,7 @@ class SubInterestPage extends Component {
 
   async getSubInterests() {
     const response = await fetch(
-      `${ngrokRoute}/api/getsubinterests?child=${this.props.subinterest
+      `${endpoint}/api/getsubinterests?child=${this.props.subinterest
         .childId}`,
       {
         headers: {
@@ -116,13 +155,15 @@ class SubInterestPage extends Component {
     };
     this.socket.emit("newMessage", messageData);
     this.setState({
-      messages: this.state.messages.concat({
-        message,
-        type: "normal",
-        createdAt: new Date(),
-        user: this.props.user,
-        key: "userCreated"
-      })
+      messages: [
+        {
+          message,
+          type: "normal",
+          createdAt: new Date(),
+          user: this.props.user,
+          key: "userCreated"
+        }
+      ].concat(this.state.messages)
     });
   }
 
@@ -139,6 +180,16 @@ class SubInterestPage extends Component {
       >
         {this.state.subinterest &&
           <Row style={{ marginTop: 20 }}>
+            <TouchableOpacity
+              onPress={() => this.props.navigation.navigate("InterestPage")}
+            >
+              <Icon
+                name="chevron-left"
+                size={25}
+                color="#212121"
+                style={{ marginRight: 5 }}
+              />
+            </TouchableOpacity>
             <Box
               style={{
                 marginRight: 15,
@@ -153,12 +204,21 @@ class SubInterestPage extends Component {
               {this.state.subinterest.name}
             </Paragraph>
           </Row>}
-        <ScrollView
-          ref={ref => (this.scrollView = ref)}
-          onContentSizeChange={(contentWidth, contentHeight) => {
-            this.scrollView.scrollToEnd({ animated: true });
-          }}
+        <InvertibleScrollView
+          inverted
           contentContainerStyle={{ padding: 10 }}
+          onScroll={({ nativeEvent }) => {
+            if (
+              this.isCloseToTop(nativeEvent) &&
+              !this.state.loading &&
+              !this.state.newMessagesLoading
+            ) {
+              this.loadNextData();
+              this.setState({
+                newMessagesLoading: true
+              });
+            }
+          }}
         >
           {this.state.messages.map(message =>
             <Message
@@ -170,9 +230,17 @@ class SubInterestPage extends Component {
               name={message.user.name}
             />
           )}
-        </ScrollView>
+          {!this.state.loading &&
+            this.state.messages.length > 10 &&
+            !this.state.noMoreMessages &&
+            <ActivityIndicator
+              style={{ margin: 20 }}
+              size="small"
+              color="#000000"
+            />}
+        </InvertibleScrollView>
         <Animated.View style={{ marginBottom: this.keyboardHeight }}>
-          <Messenger handleMessage={this.handleMessage} />
+          <Messenger sub handleMessage={this.handleMessage} />
         </Animated.View>
       </Container>
     );
@@ -206,7 +274,8 @@ const Row = styled.View`
   display: flex;
   alignItems: center;
   flexDirection: row;
-  margin: 10px;
+  paddingLeft: 5px;
+  paddingBottom: 10px;
 `;
 
 const Paragraph = styled.Text`

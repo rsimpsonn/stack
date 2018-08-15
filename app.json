@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "stack",
+    "name": "Bonfire",
     "description": "This project is really great.",
-    "slug": "stack",
+    "slug": "bonfire",
     "privacy": "public",
     "sdkVersion": "27.0.0",
     "platforms": ["ios", "android"],
@@ -21,7 +21,10 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.bonfire.bonfirev2"
+    },
+    "android": {
+      "package": "com.bonfire.bonfirev2"
     }
   }
 }

@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, StatusBar } from "react-native";
 import { createStackNavigator } from "react-navigation";
 import { Provider } from "react-redux";
 import configureStore from "./configureStore";
@@ -14,6 +14,7 @@ import JoinGroup from "./src/Containers/JoinGroup";
 import GroupMessaging from "./src/Containers/GroupMessaging";
 import Planner from "./src/Containers/Planner";
 import MakeGroup from "./src/Containers/MakeGroup";
+import SignUpPage from "./src/Containers/SignUpPage";
 
 const { store, persistor } = configureStore();
 
@@ -22,6 +23,7 @@ export default class App extends Component {
     return (
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
+          <StatusBar barStyle="dark-content" />
           <AppNav />
         </PersistGate>
       </Provider>
@@ -43,7 +45,8 @@ const AppNav = createStackNavigator(
     JoinGroup: { screen: JoinGroup },
     GroupMessaging: { screen: GroupMessaging },
     Planner: { screen: Planner },
-    MakeGroup: { screen: MakeGroup }
+    MakeGroup: { screen: MakeGroup },
+    SignUpPage: { screen: SignUpPage }
   },
   {
     headerMode: "none",

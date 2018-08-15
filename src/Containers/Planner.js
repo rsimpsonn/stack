@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 import moment from "moment";
 import Emoji from "react-native-emoji";
+import Icon from "react-native-vector-icons/Feather";
 
 import { connect } from "react-redux";
 
@@ -68,7 +69,7 @@ const slotToColor = {
 };
 
 const weekdays = ["Mon", "Tues", "Wed", "Thurs", "Fri"];
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 class Planner extends Component {
   constructor(props) {
@@ -79,7 +80,11 @@ class Planner extends Component {
       pickedDay: moment().day() === 6 || moment().day() === 7
         ? moment().day(8)
         : moment(),
-      events: []
+      pickedIndex: moment().day() === 6 || moment().day() === 7
+        ? moment().day(8) - 1
+        : moment().day() - 1,
+      events: [],
+      weekSchedule: [0, 1, 2, 3, 4]
     };
 
     this.getOrdinalNum = this.getOrdinalNum.bind(this);
@@ -93,12 +98,20 @@ class Planner extends Component {
     this.setState({
       events: await this.getEvents()
     });
+
+    const weekScheduleRes = await fetch(`${endpoint}/thisweek`);
+    const weekSchedule = await weekScheduleRes.json();
+
+    this.setState({
+      weekSchedule: weekSchedule.thisWeek,
+      otherWeeks: weekSchedule
+    });
   }
 
   async getEvents() {
     const weekDates = this.getWeekDates();
 
-    const response = await fetch(`${ngrokRoute}/api/geteventsbygroupid`, {
+    const response = await fetch(`${endpoint}/api/geteventsbygroupid`, {
       method: "POST",
       headers: {
         "x-access-token": this.props.user.token,
@@ -154,13 +167,109 @@ class Planner extends Component {
   }
 
   render() {
-    console.log(moment().day());
-    var pickedDayEvents = this.state.events.filter(i =>
-      this.state.pickedDay.isSame(moment(i.date), "date")
-    );
     var days = this.getWeekDates().sort((a, b) => a.date() - b.date());
+    var pickedDayEvents = this.state.events.filter(i => {
+      if (i.paused) {
+        return false;
+      }
+      switch (i.option) {
+        case "One Time":
+          if (this.state.pickedDay.diff(moment()) > 0) {
+            return false;
+          }
+          return this.state.pickedDay.isSame(moment(i.date), "date");
+          break;
+        case "Weekly":
+          var irregularities;
+          var pickedDayCopy = moment(i.date);
+          console.log(
+            pickedDayCopy.startOf("isoweek").month() +
+              1 +
+              "-" +
+              pickedDayCopy.startOf("isoweek").date()
+          );
+          if (
+            this.state.otherWeeks &&
+            this.state.otherWeeks[
+              pickedDayCopy.startOf("isoweek").month() +
+                1 +
+                "-" +
+                pickedDayCopy.startOf("isoweek").date()
+            ]
+          ) {
+            irregularities = this.state.otherWeeks[
+              pickedDayCopy.startOf("isoweek").month() +
+                1 +
+                "-" +
+                pickedDayCopy.startOf("isoweek").date()
+            ];
+          } else {
+            irregularities = [1, 2, 3, 4, 5];
+          }
+          const dayInWeek = irregularities[moment(i.date).day() - 1] - 1;
+          if (dayInWeek === this.state.weekSchedule[this.state.pickedIndex]) {
+            return true;
+          }
+          return false;
+          break;
+        case "Monthly":
+          if (
+            days[moment(i.date).day() - 1].diff(moment(i.date), "days") === 28
+          ) {
+            var irregularities;
+            var pickedDayCopy = moment(i.date);
+            console.log(
+              pickedDayCopy.startOf("isoweek").month() +
+                1 +
+                "-" +
+                pickedDayCopy.startOf("isoweek").date()
+            );
+            if (
+              this.state.otherWeeks &&
+              this.state.otherWeeks[
+                pickedDayCopy.startOf("isoweek").month() +
+                  1 +
+                  "-" +
+                  pickedDayCopy.startOf("isoweek").date()
+              ]
+            ) {
+              irregularities = this.state.otherWeeks[
+                pickedDayCopy.startOf("isoweek").month() +
+                  1 +
+                  "-" +
+                  pickedDayCopy.startOf("isoweek").date()
+              ];
+            } else {
+              irregularities = [1, 2, 3, 4, 5];
+            }
+            const dayInWeek = irregularities[moment(i.date).day() - 1] - 1;
+            if (dayInWeek === this.state.weekSchedule[this.state.pickedIndex]) {
+              return true;
+            }
+            return false;
+          }
+          break;
+      }
+    });
     return (
       <Container>
+        <TouchableOpacity
+          onPress={() => this.props.navigation.navigate("HomePage")}
+          style={{
+            position: "absolute",
+            top: 35,
+            left: 5,
+            width: 50,
+            height: 50
+          }}
+        >
+          <Icon
+            name="chevron-left"
+            size={25}
+            color="#212121"
+            style={{ marginRight: 5 }}
+          />
+        </TouchableOpacity>
         <Column>
           <Paragraph>
             YOUR WEEK
@@ -176,7 +285,6 @@ class Planner extends Component {
           >
             {months[this.state.pickedDay.month()]}
           </Paragraph>
-
           <Row>
             {days.map((i, index) =>
               <View
@@ -197,7 +305,8 @@ class Planner extends Component {
                   {weekdays[index]}
                 </Paragraph>
                 <TouchableOpacity
-                  onPress={() => this.setState({ pickedDay: i })}
+                  onPress={() =>
+                    this.setState({ pickedDay: i, pickedIndex: index })}
                 >
                   <Circle
                     style={{
@@ -234,14 +343,17 @@ class Planner extends Component {
         <ScrollView
           contentContainerStyle={{ paddingTop: 20, paddingBottom: 20 }}
         >
-          {dayTimes[this.state.pickedDay.day() - 1].map((slot, index) =>
+          {dayTimes[
+            this.state.weekSchedule[this.state.pickedDay.day() - 1]
+          ].map((slot, index) =>
             <Row
               style={{
                 marginTop: index - 1 === -1
                   ? 0
                   : (slot.firstMark -
-                      dayTimes[this.state.pickedDay.day() - 1][index - 1]
-                        .secondMark) /
+                      dayTimes[
+                        this.state.weekSchedule[this.state.pickedDay.day() - 1]
+                      ][index - 1].secondMark) /
                       4
               }}
             >

@@ -3,6 +3,7 @@ import { View, Image, Text, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 import { connect } from "react-redux";
 import Icon from "react-native-vector-icons/Feather";
+import { Permissions, Notifications } from "expo";
 
 import ProfilePicture from "../Components/ProfilePicture";
 import InterestIcon from "../Components/InterestIcon";
@@ -16,11 +17,35 @@ import {
   logout
 } from "../../actions";
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 class HomePage extends Component {
-  componentDidMount() {
+  async componentDidMount() {
     this.props.getInterests(this.props.user.token, this.props.user.id);
     this.props.getUserGroups(this.props.user.token, this.props.user.id);
+    // this.getNotificationToken();
+  }
+
+  async getNotificationToken() {
+    const { status: existingStatus } = await Permissions.getAsync(
+      Permissions.NOTIFICATIONS
+    );
+    const { status } = await Permissions.askAsync(Permissions.NOTIFICATIONS);
+    let token = await Notifications.getExpoPushTokenAsync();
+
+    console.log(token);
+
+    fetch(`${endpoint}/api/addnotificationtoken`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-type": "application/json",
+        "x-access-token": this.props.user.token
+      },
+      body: JSON.stringify({
+        userId: this.props.user.id,
+        notificationToken: token
+      })
+    });
   }
 
   chooseInterest(interestId) {
@@ -50,7 +75,7 @@ class HomePage extends Component {
         key={group.groupId}
         source={
           group.cover.substring(0, 1) === "/"
-            ? ngrokRoute + group.cover
+            ? endpoint + group.cover
             : group.cover
         }
         large
@@ -58,7 +83,7 @@ class HomePage extends Component {
     );
     return (
       <Container>
-        <View>
+        <View style={{ width: 100 }}>
           <ProfilePicture user={this.props.user} />
           <MainText>Your{"\n"}Stacks</MainText>
         </View>
@@ -68,17 +93,9 @@ class HomePage extends Component {
         </RightView>
         <TouchableOpacity
           onPress={() => this.props.navigation.navigate("Planner")}
-          style={{ marginTop: 20 }}
+          style={{ marginTop: 20, position: "absolute", top: 15, right: 20 }}
         >
           <Icon size={30} color="#212121" name="clock" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            this.props.logout();
-            this.props.navigation.navigate("LoginPage");
-          }}
-        >
-          <Icon size={30} color="#212121" name="lock" />
         </TouchableOpacity>
       </Container>
     );

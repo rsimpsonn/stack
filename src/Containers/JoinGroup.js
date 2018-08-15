@@ -2,14 +2,15 @@ import React, { Component } from "react";
 import { View, TouchableOpacity, ScrollView, Text } from "react-native";
 import styled from "styled-components/native";
 import Image from "react-native-remote-svg";
+import Icon from "react-native-vector-icons/Feather";
 
 import JoinFooter from "../Components/JoinFooter";
 
 import { connect } from "react-redux";
 
-import { joinGroup } from "../../actions";
+import { joinGroup, groupChosen } from "../../actions";
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 class JoinGroup extends Component {
   constructor(props) {
@@ -29,7 +30,7 @@ class JoinGroup extends Component {
 
   async getGroup() {
     const response = await fetch(
-      `${ngrokRoute}/api/getgroupbyid?groupId=${this.props.groupNav.groupId}`,
+      `${endpoint}/api/getgroupbyid?groupId=${this.props.groupNav.groupId}`,
       {
         headers: {
           "x-access-token": this.props.user.token
@@ -42,21 +43,34 @@ class JoinGroup extends Component {
   }
 
   joinGroup(groupId) {
-    console.log("pressed");
+    console.log(groupId);
     this.props.joinGroup(this.props.user.token, this.props.user.id, groupId);
+    this.props.groupChosen({ groupId });
+    this.props.navigation.navigate("GroupMessaging");
   }
 
   render() {
     console.log(this.state.group);
     return (
       <Container>
+        <TouchableOpacity
+          style={{ position: "absolute", top: 30, left: 10 }}
+          onPress={() => this.props.navigation.navigate("InterestPage")}
+        >
+          <Icon
+            name="chevron-left"
+            size={25}
+            color="#212121"
+            style={{ marginRight: 5 }}
+          />
+        </TouchableOpacity>
         <ScrollView>
           {this.state.group &&
             <Container>
               <Cover
                 source={{
                   uri: this.state.group.cover.substring(0, 1) === "/"
-                    ? ngrokRoute + this.state.group.cover
+                    ? endpoint + this.state.group.cover
                     : this.state.group.cover
                 }}
               />
@@ -81,7 +95,8 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {
   return {
     joinGroup: (token, userId, groupId) =>
-      dispatch(joinGroup(token, userId, groupId))
+      dispatch(joinGroup(token, userId, groupId)),
+    groupChosen: groupId => dispatch(groupChosen(groupId))
   };
 }
 

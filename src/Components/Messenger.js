@@ -5,20 +5,22 @@ import {
   Button,
   Animated,
   Text,
-  TextInput
+  TextInput,
+  ScrollView
 } from "react-native";
 import styled from "styled-components/native";
 import Image from "react-native-remote-svg";
-import { Haptic } from "expo";
+import { Haptic, ImagePicker, Permissions } from "expo";
 import Emoji from "react-native-emoji";
 import Swiper from "react-native-swiper";
 import { connect } from "react-redux";
+import Icon from "react-native-vector-icons/Feather";
 
 import TodoFormatter from "./TodoFormatter";
 import EventFormatter from "./EventFormatter";
+import VoteFormatter from "./VoteFormatter";
 
-const closedPackage = require("./assets/closedpackage.svg");
-const openedPackage = require("./assets/openedpackage.svg");
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 class Messenger extends Component {
   constructor(props) {
@@ -31,21 +33,22 @@ class Messenger extends Component {
       tagsOpened: false,
       appear: false,
       typePicked: false,
-      index: false
+      index: 0,
+      images: []
     };
 
     this.formatterHeight = new Animated.Value(0);
 
     this.animateFormatter = this.animateFormatter.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
+    this.getImage = this.getImage.bind(this);
+    this.getLinks = this.getLinks.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
-    if (nextProps.groupPicked) {
-      this.setState({
-        pickedTag: nextProps.groupPicked
-      });
-    }
+    this.setState({
+      pickedTag: nextProps.groupPicked
+    });
   }
 
   animateFormatter() {
@@ -61,78 +64,171 @@ class Messenger extends Component {
     setTimeout(() => this.setState({ appear: !this.state.appear }), 400);
   }
 
-  handleMessage() {
-    console.log(this.eventFormatter.state);
-    // var messageData = {
-    //   message: this.state.message
-    // };
-    //
-    // switch (this.state.typePicked) {
-    //   case "todo":
-    //     messageData.description = this.todoFormatter.state.description;
-    //     messageData.todos = this.todoFormatter.state.todos;
-    //     messageData.type = "todo";
-    //     break;
-    //   case "event":
-    //     messageData.description = this.state.description;
-    //     messageData.option = this.state.option;
-    //     messageData.time = this.state.time;
-    //     messageData.date = this.state.date;
-    //     messageData.type = "event";
-    //     break;
-    //   default:
-    //     messageData.type = "normal";
-    // }
-    //
-    // if (this.state.pickedTag) {
-    //   messageData.tag = this.props.groupTags[this.state.pickedTag - 1].name;
-    // }
-    //
-    // console.log(messageData);
-    // this.props.handleMessage(messageData);
+  async getImage() {
+    Permissions.askAsync(Permissions.CAMERA_ROLL);
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      base64: true,
+      mediaTypes: "Images",
+      compression: 0.5
+    });
+
+    this.setState({
+      images: this.state.images.concat({
+        uri: result.uri,
+        type: "image/jpeg",
+        name: "image.jpg"
+      })
+    });
+  }
+
+  async handleMessage() {
+    if (this.props.sub) {
+      this.props.handleMessage(this.state.message);
+      return;
+    }
+    var messageData = {};
+
+    if (this.state.formatterOpened) {
+      var typePicked = ["event", "todo", "vote"][this.state.index];
+      switch (typePicked) {
+        case "todo":
+          messageData.message = this.state.message;
+          messageData.description = this.state.description;
+          messageData.todos = this.state.todos;
+          messageData.type = "todo";
+          break;
+        case "event":
+          messageData.message = this.state.message;
+          messageData.description = this.state.description;
+          messageData.option = this.state.option;
+          messageData.time = this.state.time;
+          messageData.date = this.state.date;
+          messageData.type = "event";
+          break;
+        case "vote":
+          messageData.message = this.state.message;
+          messageData.description = this.state.description;
+          messageData.options = this.state.voteOptions.filter(
+            i => i.length > 0
+          );
+          messageData.type = "vote";
+          break;
+      }
+    } else {
+      messageData.type = "normal";
+      messageData.message = this.state.message;
+    }
+
+    if (this.props.groupPicked !== false) {
+      messageData.tag = this.props.groupTags[this.props.groupPicked].name;
+    }
+
+    const links = await this.getLinks();
+
+    if (links) {
+      messageData.attachments = links;
+    } else {
+      messageData.attachments = [];
+    }
+
+    this.props.handleMessage(messageData);
+  }
+
+  async getLinks() {
+    if (this.state.images.length > 0) {
+      var data = new FormData();
+      this.state.images.forEach(image => data.append("attachment", image));
+      console.log(data);
+      const res = await fetch(`${endpoint}/api/messageattachments`, {
+        method: "POST",
+        headers: {
+          "x-access-token": this.props.user.token,
+          "Content-type": "multipart/form-data",
+          Accept: "application/json"
+        },
+        body: data
+      });
+      const links = await res.json();
+
+      return links;
+    }
+    return false;
   }
 
   render() {
+    console.log(this.state.todos);
     return (
       <Row>
-        {!this.state.formatterOpened &&
-          <Bubble
-            onChangeText={text => this.setState({ message: text })}
-            value={this.state.message}
-            placeholder={this.state.placeholder}
-            multiline
-          />}
+        <Bubble
+          onChangeText={text => this.setState({ message: text })}
+          value={this.state.message}
+          placeholder={this.state.placeholder}
+          multiline
+        />
         <Animated.View
           style={{ height: this.formatterHeight, overflow: "hidden" }}
         >
-          <Swiper showsPagination={false}>
+          <Swiper
+            showsPagination={false}
+            index={this.state.index}
+            onIndexChanged={index => this.setState({ index })}
+            loop={false}
+          >
             <EventFormatter
-              progressStarted={() => {
-                if (this.state.typePicked !== "event") {
-                  this.setState({ typePicked: "event" });
-                }
-              }}
-              returnMessageData={messageData =>
-                this.setState({ eventData: messageData })}
-              ref={c => (this.eventFormatter = c)}
+              handleChange={(key, value) => this.setState({ [key]: value })}
             />
             <TodoFormatter
-              progressStarted={() => {
-                if (this.state.typePicked !== "todo") {
-                  this.setState({ typePicked: "todo" });
-                }
-              }}
+              handleChange={(key, value) => this.setState({ [key]: value })}
+            />
+            <VoteFormatter
+              handleChange={(key, value) => this.setState({ [key]: value })}
             />
           </Swiper>
         </Animated.View>
+        <ScrollView horizontal>
+          {this.state.images.map((image, i) =>
+            <TouchableOpacity
+              onPress={() => {
+                const copy = this.state.images;
+                copy.splice(i, 1);
+                this.setState({
+                  images: copy
+                });
+              }}
+            >
+              <Image
+                style={{
+                  borderRadius: 4,
+                  height: 80,
+                  width: 80,
+                  margin: 5,
+                  marginBottom: 0
+                }}
+                source={{
+                  uri: image.uri
+                }}
+              />
+            </TouchableOpacity>
+          )}
+        </ScrollView>
         <Layout style={{ justifyContent: "flex-start" }}>
-          <TouchableOpacity onPress={() => this.animateFormatter()}>
-            <Image
-              style={{ width: 30, height: 25 }}
-              source={
-                this.state.formatterOpened ? openedPackage : closedPackage
-              }
-            />
+          {this.props.leader &&
+            <TouchableOpacity onPress={() => this.animateFormatter()}>
+              <Image
+                style={{ width: 30, height: 25 }}
+                source={{
+                  uri: this.state.formatterOpened
+                    ? "https://cdn.rawgit.com/rsimpsonn/6c7f9335e558ce48403b150377e2d29e/raw/d26a9b8d4eab9096f6e5fefd557e309f8b5ae71c/opened-package.svg"
+                    : "https://cdn.rawgit.com/rsimpsonn/7b2728fff2fd91bc5c3cb634d6ead4e7/raw/103a09cdeede97096fd2067680019ca1c1d54942/closed-package.svg"
+                }}
+              />
+            </TouchableOpacity>}
+          <TouchableOpacity
+            style={{ marginLeft: 5 }}
+            onPress={() => this.getImage()}
+          >
+            <Icon color="#212121" name="image" size={25} />
           </TouchableOpacity>
           <Column
             style={{
@@ -147,28 +243,6 @@ class Messenger extends Component {
               justifyContent: "flex-end"
             }}
           >
-            {this.state.tagsOpened &&
-              this.props.groupTags.map((tag, index) =>
-                <TouchableOpacity
-                  onPress={() =>
-                    this.setState({
-                      tagsOpened: false,
-                      pickedTag: index + 1
-                    })}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      display: "flex"
-                    }}
-                  >
-                    <Text style={{ fontSize: 20, marginBottom: 20 }}>
-                      <Emoji name={tag.symbol} />
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
             <View
               style={{
                 flexDirection: "row",
@@ -176,12 +250,6 @@ class Messenger extends Component {
                 display: "flex"
               }}
             >
-              {this.state.pickedTag &&
-                <Text style={{ fontSize: 20, marginRight: 10 }}>
-                  <Emoji
-                    name={this.props.groupTags[this.state.pickedTag - 1].symbol}
-                  />
-                </Text>}
               <TouchableOpacity
                 onPress={() => {
                   console.log("press");
@@ -189,10 +257,6 @@ class Messenger extends Component {
                   this.setState({
                     message: ""
                   });
-                }}
-                onLongPress={() => {
-                  Haptic.impact(Haptic.ImpactStyles.Medium);
-                  this.setState({ tagsOpened: true });
                 }}
               >
                 <Image

@@ -1,12 +1,10 @@
 import React, { Component } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
-import Image from "react-native-remote-svg";
 import { connect } from "react-redux";
+import Icon from "react-native-vector-icons/Feather";
 
 import { completeTodo } from "../../actions";
-
-const check = require("./assets/blue-check.svg");
 
 class TodoRow extends Component {
   constructor(props) {
@@ -33,12 +31,30 @@ class TodoRow extends Component {
 
   render() {
     return (
-      <TouchableOpacity onPress={() => this.press()}>
+      <TouchableOpacity
+        onPress={() => {
+          if (!this.props.pressed) {
+            this.press();
+          }
+        }}
+      >
         <Row>
-          <Circle>
-            {this.state.pressed &&
-              <Image source={check} style={{ height: 8, width: 8 }} />}
-          </Circle>
+          {this.state.pressed &&
+            <Icon
+              name={"check"}
+              size={15}
+              color={"#212121"}
+              style={{
+                marginRight: 10
+              }}
+            />}
+          {!this.state.pressed &&
+            <Icon
+              name={"circle"}
+              size={15}
+              color={"#212121"}
+              style={{ marginRight: 10 }}
+            />}
           <Paragraph style={{ fontFamily: "Avenir-Medium" }}>
             {this.state.todo.todo}
           </Paragraph>

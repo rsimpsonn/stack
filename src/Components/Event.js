@@ -11,13 +11,13 @@ import EventGoing from "./EventGoing";
 import { getEvent, removeFromEventList, addToEventList } from "../../actions";
 
 const weekdays = [
+  "Sunday",
   "Monday",
   "Tuesday",
   "Wednesday",
   "Thursday",
   "Friday",
-  "Saturday",
-  "Sunday"
+  "Saturday"
 ];
 const months = [
   "January",
@@ -165,7 +165,7 @@ class Event extends Component {
     console.log(this.props.events);
     var date;
     if (this.state.event) {
-      date = moment(this.state.event.createdAt);
+      date = moment(this.state.event.date);
       console.log(date.weekday());
     }
     return (

@@ -6,10 +6,13 @@ import {
   Text,
   Animated,
   Keyboard,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal,
+  Image
 } from "react-native";
 import styled from "styled-components/native";
-import Image from "react-native-remote-svg";
+import Icon from "react-native-vector-icons/Feather";
+import InvertibleScrollView from "react-native-invertible-scroll-view";
 
 import Messenger from "../Components/Messenger";
 import Message from "../Components/Message";
@@ -21,7 +24,7 @@ import { connect } from "react-redux";
 import { BlurView } from "expo";
 import openSocket from "socket.io-client";
 
-const ngrokRoute = "https://1baef6f5.ngrok.io";
+const endpoint = "https://stormy-lowlands-99865.herokuapp.com";
 
 class GroupMessaging extends Component {
   constructor(props) {
@@ -34,15 +37,22 @@ class GroupMessaging extends Component {
       groupPicked: "",
       groupTags: [],
       pickedIndex: false,
-      leaders: false
+      leaders: false,
+      attachment: "",
+      enlargedImage: false,
+      dataIndex: 1,
+      newMessagesLoading: false,
+      firstTime: true
     };
 
-    this.socket = openSocket(ngrokRoute);
+    this.socket = openSocket(endpoint);
     this.keyboardHeight = new Animated.Value(0);
     this.getGroup = this.getGroup.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
     this.getTags = this.getTags.bind(this);
     this.setGroup = this.setGroup.bind(this);
+    this.enlargeImage = this.enlargeImage.bind(this);
+    this.loadNextData = this.loadNextData.bind(this);
   }
 
   async componentDidMount() {
@@ -92,7 +102,7 @@ class GroupMessaging extends Component {
     Animated.timing(this.keyboardHeight, {
       duration: event.duration / 1.2,
       toValue: event.endCoordinates.height
-    }).start(() => this.scrollView.scrollToEnd({ animated: true }));
+    }).start();
   };
 
   keyboardWillHide = event => {
@@ -102,9 +112,15 @@ class GroupMessaging extends Component {
     }).start();
   };
 
+  isCloseToTop = ({ layoutMeasurement, contentOffset, contentSize }) => {
+    return (
+      layoutMeasurement.height + contentOffset.y >= contentSize.height - 20
+    );
+  };
+
   async getGroup() {
     const response = await fetch(
-      `${ngrokRoute}/api/getgroupbyid?groupId=${this.props.groupNav.groupId}`,
+      `${endpoint}/api/getgroupbyid?groupId=${this.props.groupNav.groupId}`,
       {
         headers: {
           "x-access-token": this.props.user.token
@@ -135,6 +151,33 @@ class GroupMessaging extends Component {
         user: this.props.user,
         key: "userCreated"
       })
+    });
+  }
+
+  async loadNextData() {
+    let results = await fetch(`${endpoint}/api/retrievemessages`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-type": "application/json",
+        "x-access-token": this.props.user.token
+      },
+      body: JSON.stringify({
+        groupId: this.state.group.groupId,
+        dataIndex: this.state.dataIndex
+      })
+    });
+
+    let messages = await results.json();
+
+    console.log(messages);
+
+    this.setState({
+      dataIndex: this.state.dataIndex + 1,
+      messages: messages.concat(this.state.messages),
+      newMessagesLoading: false,
+      noMoreMessages: messages.length === 0,
+      loading: false
     });
   }
 
@@ -225,6 +268,34 @@ class GroupMessaging extends Component {
     return tags;
   }
 
+  inGroup() {
+    var inOne = false;
+    if (
+      this.state.group.leaders.filter(i => i.userId === this.props.user.id)
+        .length > 0
+    ) {
+      return true;
+    }
+    this.state.group.tags.forEach(tag => {
+      if (!tag.private) {
+        inOne = true;
+      }
+      tag.members.forEach(user => {
+        if (this.props.user.id === user.userId) {
+          inOne = true;
+        }
+      });
+    });
+    return inOne;
+  }
+
+  enlargeImage(attachment) {
+    this.setState({
+      attachment,
+      enlargedImage: true
+    });
+  }
+
   render() {
     var tags = [];
 
@@ -239,6 +310,8 @@ class GroupMessaging extends Component {
         message => message.tag === this.state.groupPicked
       );
     }
+
+    console.log(messages.length);
     return (
       <Container
         style={{
@@ -251,7 +324,17 @@ class GroupMessaging extends Component {
         {this.state.group &&
           <View>
             <BlurView style={{ marginTop: 20 }}>
-              <Row>
+              <Row style={{ paddingRight: 10 }}>
+                <TouchableOpacity
+                  onPress={() => this.props.navigation.navigate("HomePage")}
+                >
+                  <Icon
+                    name="chevron-left"
+                    size={25}
+                    color="#212121"
+                    style={{ marginRight: 5 }}
+                  />
+                </TouchableOpacity>
                 <Box
                   style={{
                     marginRight: 15,
@@ -270,88 +353,120 @@ class GroupMessaging extends Component {
                   onPress={() =>
                     this.setState({ showTags: !this.state.showTags })}
                 >
-                  {this.state.groupPicked.length > 0
-                    ? <View
-                        style={{
-                          display: "flex",
-                          flexDirection: "row",
-                          alignItems: "center"
-                        }}
-                      >
-                        <Text
-                          style={{ fontSize: 14, margin: 0, marginRight: 5 }}
-                        >
-                          {!this.state.leaders
-                            ? this.state.group.tags[this.state.pickedIndex]
-                                .symbol
-                            : "👑"}
-                        </Text>
-                        <Paragraph
-                          style={{
-                            fontFamily: "Avenir-Medium",
-                            fontSize: 14,
-                            color: !this.state.leaders
-                              ? this.state.group.tags[this.state.pickedIndex]
-                                  .color
-                              : "#FD8514",
-                            margin: 0
-                          }}
-                        >
-                          {this.state.groupPicked}
-                        </Paragraph>
-                      </View>
-                    : <Paragraph
-                        style={{
-                          fontSize: 14,
-                          fontFamily: "Avenir-Medium",
-                          color: "#DCDCDC"
-                        }}
-                      >
-                        Groups
-                      </Paragraph>}
+                  {this.inGroup() &&
+                    <View>
+                      {this.state.groupPicked.length > 0
+                        ? <View
+                            style={{
+                              display: "flex",
+                              flexDirection: "row",
+                              alignItems: "center"
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                margin: 0,
+                                marginRight: 5
+                              }}
+                            >
+                              {!this.state.leaders
+                                ? this.state.group.tags[this.state.pickedIndex]
+                                    .symbol
+                                : "👑"}
+                            </Text>
+                            <Paragraph
+                              style={{
+                                fontFamily: "Avenir-Medium",
+                                fontSize: 14,
+                                color: !this.state.leaders
+                                  ? this.state.group.tags[
+                                      this.state.pickedIndex
+                                    ].color
+                                  : "#FD8514",
+                                margin: 0,
+                                marginRight: 10
+                              }}
+                            >
+                              {this.state.groupPicked}
+                            </Paragraph>
+                          </View>
+                        : <Paragraph
+                            style={{
+                              fontSize: 14,
+                              fontFamily: "Avenir-Medium",
+                              color: "#DCDCDC",
+                              marginRight: 10
+                            }}
+                          >
+                            Groups
+                          </Paragraph>}
+                    </View>}
 
                 </TouchableOpacity>
               </Row>
             </BlurView>
             {this.state.showTags &&
-              <ScrollView horizontal>
+              <ScrollView
+                contentContainerStyle={{ paddingLeft: 5, paddingBottom: 2 }}
+                horizontal
+              >
                 {tags}
               </ScrollView>}
           </View>}
-        <ScrollView
-          ref={ref => (this.scrollView = ref)}
-          onContentSizeChange={(contentWidth, contentHeight) => {
-            if (!this.state.leaders) {
-              this.scrollView.scrollToEnd({ animated: true });
+        {this.state.loading &&
+          <ActivityIndicator
+            style={{ marginTop: 200 }}
+            size="small"
+            color="#000000"
+          />}
+        {this.state.group &&
+          this.state.leaders &&
+          <LeadersPanel group={this.state.group} update={this.setGroup} />}
+        <InvertibleScrollView
+          inverted
+          contentContainerStyle={{ padding: 10 }}
+          onScroll={({ nativeEvent }) => {
+            if (
+              this.isCloseToTop(nativeEvent) &&
+              !this.state.loading &&
+              !this.state.newMessagesLoading
+            ) {
+              this.loadNextData();
+              this.setState({
+                newMessagesLoading: true
+              });
             }
           }}
-          contentContainerStyle={{ padding: 10 }}
         >
           {this.state.group &&
-            this.state.leaders &&
-            <LeadersPanel group={this.state.group} update={this.setGroup} />}
-          {this.state.loading &&
+            messages
+              .map(message =>
+                <Message
+                  key={message._id}
+                  message={message.message}
+                  background={this.state.group.messages}
+                  user={message.user.id === this.props.user.id}
+                  createdAt={message.createdAt}
+                  name={message.user.name}
+                  type={message.type}
+                  typeId={message.typeId}
+                  tag={message.tag}
+                  groupTags={this.state.group.tags}
+                  attachments={message.attachments}
+                  enlargeImage={this.enlargeImage}
+                />
+              )
+              .reverse()}
+          {!this.state.loading &&
+            messages.length > 0 &&
+            !this.state.noMoreMessages &&
             <ActivityIndicator
-              style={{ marginTop: 200 }}
+              style={{ margin: 20 }}
               size="small"
               color="#000000"
             />}
-          {this.state.group &&
-            messages.map(message =>
-              <Message
-                key={message._id}
-                message={message.message}
-                background={this.state.group.messages}
-                user={message.user.id === this.props.user.id}
-                createdAt={message.createdAt}
-                name={message.user.name}
-                type={message.type}
-                typeId={message.typeId}
-                tag={message.tag}
-                groupTags={this.state.group.tags}
-              />
-            )}
-        </ScrollView>
+        </InvertibleScrollView>
         <Animated.View style={{ marginBottom: this.keyboardHeight }}>
           {this.state.group &&
             !this.state.leaders &&
@@ -360,10 +475,13 @@ class GroupMessaging extends Component {
               handleMessage={this.handleMessage}
               groupPicked={
                 this.state.groupPicked.length > 0
-                  ? this.state.group.tags.findIndex(
-                      i => i.name === this.state.groupPicked
-                    ) + 1
+                  ? this.state.pickedIndex
                   : false
+              }
+              leader={
+                this.state.group.leaders.filter(
+                  i => i.userId === this.props.user.id
+                ).length > 0
               }
             />}
         </Animated.View>
@@ -399,7 +517,8 @@ const Row = styled.View`
   display: flex;
   alignItems: center;
   flexDirection: row;
-  margin: 10px;
+  paddingLeft: 5px;
+  paddingBottom: 10px;
 `;
 
 const Paragraph = styled.Text`
@@ -407,5 +526,13 @@ const Paragraph = styled.Text`
   color: #212121;
   fontSize: 16px;
 `;
+
+const Column = styled.View`
+  flexDirection: column;
+  display: flex;
+  justifyContent: center;
+  alignItems: center;
+  margin: 10px;
+  `;
 
 export default connect(mapStateToProps)(GroupMessaging);

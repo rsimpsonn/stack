@@ -4,53 +4,36 @@ import styled from "styled-components/native";
 
 import { connect } from "react-redux";
 
-import { login } from "../../actions";
+import { getSignUp } from "../../actions";
 
-class LoginPage extends Component {
+class SignUpPage extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
       email: "",
-      password: ""
+      password: "",
+      lastName: "",
+      firstName: ""
     };
-
-    this.login = this.login.bind(this);
-  }
-
-  componentDidMount() {
-    console.log(this.props.user.token);
-    if (this.props.user.token) {
-      this.props.navigation.navigate("HomePage");
-    }
-  }
-
-  async login(callback) {
-    if (this.state.email && this.state.password) {
-      let loginInfo = await fetch("http://fa801706.ngrok.io/login", {
-        method: "POST",
-        body: JSON.stringify({
-          email: this.state.email,
-          password: this.state.password
-        }),
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        }
-      });
-
-      let loginInfoJSON = await loginInfo.json();
-
-      // TODO Redux
-
-      this.props.navigation.navigate("HomePage");
-    }
   }
 
   render() {
     console.log(this.props.user);
     return (
       <Container>
+        <Subtitle>FIRST NAME</Subtitle>
+        <Info
+          onChangeText={firstName => this.setState({ firstName })}
+          placeholder="First Name"
+          value={this.state.firstName}
+        />
+        <Subtitle>LAST NAME</Subtitle>
+        <Info
+          onChangeText={lastName => this.setState({ lastName })}
+          placeholder="Last Name"
+          value={this.state.lastName}
+        />
         <Subtitle>EMAIL</Subtitle>
         <Info
           onChangeText={email => this.setState({ email })}
@@ -67,44 +50,47 @@ class LoginPage extends Component {
           autoCapitalize="none"
           secureTextEntry
         />
+        <Subtitle>CONFIRM PASSWORD</Subtitle>
+        <Info
+          onChangeText={confirm => this.setState({ confirm })}
+          placeholder="Confirm Password"
+          type="password"
+          value={this.state.confirm}
+          autoCapitalize="none"
+          secureTextEntry
+        />
         <TouchableOpacity
-          onPress={() =>
-            this.props.getLogin(
-              this.state.email,
-              this.state.password,
-              () => this.props.navigation.navigate("HomePage"),
-              () =>
-                Alert.alert("Your email and password do not match our records")
-            )}
+          onPress={() => {
+            if (this.state.password === this.state.confirm) {
+              this.props.getSignUp(
+                this.state.firstName,
+                this.state.lastName,
+                this.state.email,
+                this.state.password,
+                () => this.props.navigation.navigate("LoginPage")
+              );
+            } else {
+              Alert.alert("Your passwords don't match");
+            }
+          }}
         >
           <Submit>
-            <Subtitle style={{ color: "white" }}>LOGIN</Subtitle>
+            <Subtitle style={{ color: "white" }}>SIGN UP</Subtitle>
           </Submit>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => this.props.navigation.navigate("SignUpPage")}
-        >
-          <Subtitle style={{ marginTop: 20 }}>SIGN UP</Subtitle>
         </TouchableOpacity>
       </Container>
     );
   }
 }
 
-function mapStateToProps(state) {
-  return {
-    user: state.user
-  };
-}
-
 function mapDispatchToProps(dispatch) {
   return {
-    getLogin: (email, password, callback) =>
-      dispatch(login(email, password, callback))
+    getSignUp: (firstName, lastName, email, password, callback) =>
+      dispatch(getSignUp(firstName, lastName, email, password, callback))
   };
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(LoginPage);
+export default connect(null, mapDispatchToProps)(SignUpPage);
 
 const Container = styled.View`
     display: flex;

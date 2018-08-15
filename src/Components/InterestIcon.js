@@ -8,11 +8,7 @@ const InterestIcon = props => {
     <TouchableOpacity onPress={() => props.press()}>
       <Box
         style={{
-          backgroundColor: props.interest.members.findIndex(
-            i => i.userId === props.userId
-          ) !== -1
-            ? "#212121"
-            : "#F2F2F2"
+          backgroundColor: "#212121"
         }}
         isMember={props.interest.members.indexOf(props.id) !== -1}
       >

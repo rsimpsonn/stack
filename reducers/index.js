@@ -7,6 +7,7 @@ import groupNavReducer from "./groupNav";
 import groupsReducer from "./groups";
 import todoReducer from "./todo";
 import eventReducer from "./event";
+import voteReducer from "./vote";
 
 const rootReducer = combineReducers({
   interests: interestsReducer,
@@ -16,7 +17,8 @@ const rootReducer = combineReducers({
   groupNav: groupNavReducer,
   groups: groupsReducer,
   todos: todoReducer,
-  events: eventReducer
+  events: eventReducer,
+  votes: voteReducer
 });
 
 export default rootReducer;
